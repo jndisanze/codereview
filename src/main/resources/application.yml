@@ -1,0 +1,50 @@
+#### SpringBoot config
+spring:
+  error:
+    errorpage401: /401.html
+    errorpage404: /404.html
+    errorpage500: /500.html
+  main:
+    show_banner: true
+
+endpoints:
+  health:
+    sensitive: false
+  metrics:
+    sensitive: false
+  shutdown:
+    enabled: true
+
+#### Server settings
+server:
+  port: 2337
+management:
+  port: 2339
+
+httpPublishers: 
+  publishers:
+    - 
+      publisherName: passthrough
+      destinationHostPort: "http://localhost:8081"
+      workerCount: 1
+      connectTimeout: 500
+      requestTimeout: 10000
+      useAsReponse: true
+    - 
+      publisherName: qa
+      destinationHostPort: "http://localhost:8080"
+      pathFilter: "^/api.*"
+      workerCount: 1
+      retryPause:
+        -  500
+        -  1000
+        
+filePublishers:
+  publishers:
+    -
+      publisherName: fileDumper
+      path: .
+      prefix: "req_"
+      suffix: ".json"
+      
+      

@@ -1,0 +1,6 @@
+httpPublishers: 
+  publishers:
+    - 
+      publisherName: passthrough
+      destinationHostPort: "apigw.local:8080"
+      workerCount: 1

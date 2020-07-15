@@ -1,0 +1,128 @@
+buildscript {
+    repositories {
+        mavenLocal()
+        maven { url "http://repo.spring.io/libs-release" }
+        maven { url "https://plugins.gradle.org/m2/" }
+    }
+    dependencies {
+        classpath("org.springframework.boot:spring-boot-gradle-plugin:1.5.7.RELEASE")
+        classpath "io.spring.gradle:dependency-management-plugin:1.0.3.RELEASE"
+        classpath 'com.netflix.nebula:gradle-ospackage-plugin:3.4.0'
+    }
+}
+
+apply plugin: 'java'
+apply plugin: 'idea'
+apply plugin: 'org.springframework.boot'
+apply plugin: 'jacoco'
+apply plugin: 'io.spring.dependency-management'
+apply plugin: 'nebula.ospackage'
+apply plugin: 'application'
+
+idea {
+    module.inheritOutputDirs = true
+}
+
+sourceCompatibility = 1.8
+targetCompatibility = 1.8
+
+sourceSets {
+
+    main {
+        resources {
+            srcDir 'src/main/resources'
+            srcDir 'rpm'
+        }
+    }
+
+    test {
+        java.srcDirs = ['src/test/unit/java']
+    }
+}
+
+configurations {
+    all*.exclude group: 'org.apache.geronimo.specs'
+}
+
+test {
+    jvmArgs "-Dspring.config.location=classpath:env.local.test.yml"
+    outputs.upToDateWhen { false }
+}
+
+processResources {
+    logger.info "Processing resources with tokens VERSION: project.rpm_version-project.rpm_release " +
+            "PROJECT_NAME: project.name RPM_JRE: project.rpm_jre RPM_USER: project.rpm_user"
+    filter org.apache.tools.ant.filters.ReplaceTokens, tokens: [VERSION     : "project.rpm_version",
+                                                                RELEASE     : "project.rpm_release",
+                                                                PROJECT_NAME: "project.name",
+                                                                RPM_JRE     : "project.rpm_jre",
+                                                                RPM_USER: "project.rpm_user"]
+
+}
+
+jacocoTestReport {
+    reports {
+        xml.enabled true
+        csv.enabled false
+        html.setDestination file("${buildDir}/jacocoHtml")
+    }
+}
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    def springBootVersion = '1.5.7.RELEASE'
+    def camelVersion = '2.16.1'
+    def springCloudVersion = '1.0.3.RELEASE'
+
+    compile group: 'org.springframework.boot', name: 'spring-boot-starter-web', version: springBootVersion
+    compile group: 'org.springframework.boot', name: 'spring-boot-starter-actuator', version: springBootVersion
+    compile group: 'net.logstash.logback', name: 'logstash-logback-encoder', version: '4.6'
+    compile group: 'org.apache.httpcomponents', name: 'httpclient', version: '4.5.3'
+
+    testCompile group: 'com.jayway.restassured', name: 'rest-assured', version: '2.5.0'
+    testCompile group: 'org.springframework.boot', name: 'spring-boot-starter-test', version: springBootVersion
+
+    testCompile group: 'org.mockito', name: 'mockito-core', version: '2.8.9'
+    testCompile group: 'org.powermock', name: 'powermock-module-junit4', version: '1.7.3'
+    testCompile group: 'org.powermock', name: 'powermock-api-mockito2', version: '1.7.3'
+    testCompile group: 'com.jcabi', name: 'jcabi-matchers', version: '1.3'
+    testCompile group: 'junit', name: 'junit', version: '4.12'
+}
+
+
+bootRun {
+    args = ['--spring.profiles.active=local']
+}
+
+mainClassName = 'au.com.sportsbet.gbs.GBSProxy'
+
+jar {
+    baseName = project.name
+    excludes = ['**/env.*.yml', '**/lbs-nginx.conf', '**/*keystore', '.gradle']
+    archiveName = 'gbsProxy.jar'
+
+    manifest {
+        //attributes 'Built-Date': new Date() //now
+        attributes 'Built-By': System.getProperty('user.name')
+        attributes 'Build-Jdk': System.getProperty('java.version')
+        attributes 'Implementation-Title': project.name
+        attributes 'Implementation-Version': project.version
+        attributes 'Implementation-Vendor-Id': project.group
+        attributes 'Main-Class': mainClassName
+    }
+}
+
+ospackage {
+    logger.info "Building package version: {project.rpm_version} release: {project.rpm_release}"
+    packageGroup = "project.rpm_packageGroup"
+    packageName = "project.name"
+    packageDescription = "project.rpm_packageDescription"
+    vendor = "project.rpm_vendor"
+    url = "project.rpm_url"
+    license = "project.rpm_license"
+    arch = "project.rpm_arch"
+    os = "LINUX"
+}
